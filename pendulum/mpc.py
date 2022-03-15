@@ -12,10 +12,17 @@ import gym
 from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 import pyomo.environ as pyo
 from pyomo.environ import value
+from pyomo.core import Suffix
 
 from pyutilib import subprocess
 
+logger = logging.getLogger(__file__)
 
+# Magic incantation needed by pyomo for -- I don't quite remember?  
+# Multiprocessing?  Possibly unnecessary!
+subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
+
+# Common parser args used by this script and distributed_trials.py
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--K",
@@ -29,10 +36,6 @@ parser.add_argument(
     type=int,
     help="Max number of episode steps (<= 200)"
 )
-
-subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
-
-logger = logging.getLogger(__file__)
 
 
 class ModelPredictiveController(object):
@@ -79,9 +82,9 @@ class ModelPredictiveController(object):
         
         # Initial conditions.
         m.thdot_init_cons = pyo.Constraint(rule=lambda m: m.thdot[0] == initial_state[2])
-        # This numpy function puts the angle in the right quadrant.  HOWEVER, it takes arguments 
-        # y,x (not x,y) and if you don't do this you'll get stuck like I did for an hour trying 
-        # to debug :P
+        # This numpy function puts the angle in the right quadrant.  HOWEVER, 
+        # it takes arguments y,x (not x,y) and if you don't do this you'll get stuck 
+        # like I did for an hour trying to debug :P
         m.th_init_cons = pyo.Constraint(
             rule=lambda m: m.th[0] == np.arctan2(initial_state[1], initial_state[0]))
 
@@ -123,7 +126,7 @@ class ModelPredictiveController(object):
     def solve(
         self,
         initial_state: np.ndarray,   # initial state from gym env (gym obs)
-        tee: bool = False            # verbose solver output?
+        tee: bool = False,           # verbose solver output?
     ) -> pd.DataFrame:
         """Returns a DataFrame with state/action variables corresponding to the 
         MPC solution."""
@@ -131,9 +134,9 @@ class ModelPredictiveController(object):
         # Create the model given the initial state.
         model = self.create_model(initial_state=initial_state)
         
-        # Solve the MPC problem, tee turns on verbose output from IPOPT.
+        # # Solve the MPC problem, tee turns on verbose output from IPOPT.
         opt = SolverFactory(self.solver, tee=tee)
-        
+
         # Try to parse the solution.  This isn't super helpful traceback but at 
         # least should tell you high-level why the solved failed.  The solver 
         # really _shouldn't_ fail if you give it a feasible problem.
@@ -183,7 +186,7 @@ def run_mpc(
     seed: int = None,       # random seed for env.reset()
     use_tqdm: bool = True,  # use tqdm for more info?
     render: bool = False,   # render the env?
-    tee: bool = False      # verbose solver output?
+    tee: bool = False       # verbose solver output?
 ) -> float:
     """Main control loop to run MPC against the gym environment. Returns the
     episode reward."""
@@ -194,34 +197,49 @@ def run_mpc(
     # Initialize the MPC controller with specified lookahead.
     c = ModelPredictiveController(K=K)
 
-    # Main control loop.
+    # Initialize auxiliary variables.
     done = False
     reward = 0.
     traj = defaultdict(list)
+    
+    # Initialize env and run the control loop.
     tic = time.time()
     obs = env.reset(seed=seed)
     rng = range(min(200, max_steps))     # control step index
     pb = tqdm(rng) if use_tqdm else rng
     try:
-        for _ in pb:
+        # Main control loop.        
+        for t in pb:
+            
+            # Solve the control problem and extract the first action.
             df = c.solve(initial_state=obs, tee=tee)
             u = df["u"].values[0]
+            
+            # Aply the action and collect trajectory/reward.
             obs, rew, done, _ = env.step([u])
             reward += rew
             traj["u"].append(u)
             traj["obs"].append(obs)
             traj["rew"].append(rew)
+    
+            # Give some additional info on run time and current state. 
+            # It's not obvious from the rendering but the stable position
+            # is at (x=1, y=0).
             if use_tqdm:
                 pb.set_description(
-                    f"ep_rew={reward:1.2f}," +\
+                    f"ep_rew={reward:1.1f}," +\
                     f"(x,y)=({obs[0]:1.2f},{obs[1]:1.2f})," +\
-                    f"thdot={obs[2]:1.3f}")
+                    f"thdot={obs[2]:1.2f}")
+        
             if render:
                 env.render()
-            if done: 
+        
+            if done:
                 break
+            
     except KeyboardInterrupt:
         print("stopped by user")
+    
     env.close()
     
     cpu_time = time.time() - tic
