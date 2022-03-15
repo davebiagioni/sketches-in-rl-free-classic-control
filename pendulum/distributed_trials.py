@@ -1,5 +1,3 @@
-import time
-
 import pandas as pd
 import ray
 
@@ -9,10 +7,10 @@ import mpc
 @ray.remote(num_returns=2)
 def run_mpc(K: int = 4, max_steps: int = 200, seed: int = None, **kwargs) -> float:
     """Returns the MPC episode reward for a single remote call."""
-    reward, traj = mpc.run_mpc(
+    reward, cpu_time = mpc.run_mpc(
         K=K, max_steps=max_steps, seed=seed, render=False, use_tqdm=False)
-    print(f"[{seed}]: {reward:1.2f}")
-    return reward, traj
+    print(f"[{seed}]: {reward:1.2f}, {cpu_time:1.2f} s")
+    return reward, cpu_time
 
 
 def main(*, K=None, seeds=None, max_steps=None) -> pd.DataFrame:
@@ -20,20 +18,23 @@ def main(*, K=None, seeds=None, max_steps=None) -> pd.DataFrame:
     
     # Create and execute the ray remote call.
     futures = [run_mpc.remote(K=K, max_steps=max_steps, seed=seed) for seed in seeds]
-    rewards = ray.get([x[0] for x in futures])
-    trajs = ray.get([x[1] for x in futures])
+    reward = ray.get([x[0] for x in futures])
+    cpu_time = ray.get([x[1] for x in futures])
     
-    # Create a dataframe with unique row indices and summarize.
-    rewards = pd.DataFrame(rewards, columns=["reward"], index=range(len(seeds)))
-    print(rewards.describe())
+    # Create a single dataframes with unique row indices and summarize
+    # reward and cpu time.
+    reward = pd.DataFrame(reward, columns=["reward"], index=seeds)
+    cpu_time = pd.DataFrame(cpu_time, columns=["cpu_time"], index=seeds)
+    df = pd.concat((reward, cpu_time), axis=1)
     
-    return rewards, trajs
+    print(df.describe())
+    
+    return df
 
 
 if __name__ == "__main__":
     
     import os
-    import pickle
     
     parser = mpc.parser
     parser.add_argument(
@@ -54,21 +55,12 @@ if __name__ == "__main__":
     ray.init(num_cpus=args.num_cpus)
     
     # Call the ray function for remote execution.
-    tic = time.time()
-    rewards, trajs = main(K=args.K, max_steps=args.max_steps, seeds=range(args.num_seeds))
-    elapsed = time.time() - tic
-    print(f"took {elapsed:1.0f} sec")
+    df = main(K=args.K, max_steps=args.max_steps, seeds=range(args.num_seeds))
     
     # Save CSV file of episode rewards dataframe.
-    path = os.path.join("results", f"{args.K}-{args.num_seeds}.csv")
-    rewards.to_csv(path)
-    print(f"wrote rewards to {path}")
-
-    # Save pickle file of episode trajectories.
-    path = path.replace(".csv", ".p")
-    with open(path, "wb") as f:
-        pickle.dump(trajs, f)
-    print(f"wrote trajectories to {path}")
-
+    k = str(args.K).zfill(3)
+    path = os.path.join("results", f"K_{k}_n_{args.num_seeds}.csv")
+    df.to_csv(path)
+    print(f"wrote results to {path}")
 
     ray.shutdown()

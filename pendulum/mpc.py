@@ -1,14 +1,13 @@
 import argparse
 from collections import defaultdict
 import logging
+import time
 
 import numpy as np
 import pandas as pd
 
 from tqdm import tqdm
 import gym
-
-import ray
 
 from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 import pyomo.environ as pyo
@@ -184,7 +183,7 @@ def run_mpc(
     seed: int = None,       # random seed for env.reset()
     use_tqdm: bool = True,  # use tqdm for more info?
     render: bool = False,   # render the env?
-    tee: bool = False       # verbose solver output?
+    tee: bool = False      # verbose solver output?
 ) -> float:
     """Main control loop to run MPC against the gym environment. Returns the
     episode reward."""
@@ -199,6 +198,7 @@ def run_mpc(
     done = False
     reward = 0.
     traj = defaultdict(list)
+    tic = time.time()
     obs = env.reset(seed=seed)
     rng = range(min(200, max_steps))     # control step index
     pb = tqdm(rng) if use_tqdm else rng
@@ -223,8 +223,10 @@ def run_mpc(
     except KeyboardInterrupt:
         print("stopped by user")
     env.close()
-        
-    return reward, traj
+    
+    cpu_time = time.time() - tic
+    
+    return reward, cpu_time
 
 
 if __name__ == "__main__":
@@ -243,5 +245,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    rew, _ = run_mpc(**vars(args))
-    logger.info(f"[worker {args.seed}] reward = {rew:1.3f}")
+    rew, cpu_time = run_mpc(**vars(args))
+    logger.info(
+        f"[worker {args.seed}] reward = {rew:1.3f}, cpu_time = {cpu_time:1.1f}s")
