@@ -27,7 +27,7 @@ class ModelPredictiveController(GenericController):
         self,
         *args,
         K: int = 10,               # number of MPC lookahead steps
-        gamma: float = 1.0,       # decay factor in cost function
+        gamma: float = 1.0,        # decay factor in cost function
         control_int: int = 1,
         solver: str = "ipopt",     # NLP solver
         **kwargs
@@ -48,7 +48,7 @@ class ModelPredictiveController(GenericController):
         th1 = np.arctan2(obs[1], (obs[0] + 1e-4))
         th2 = np.arctan2(obs[3], (obs[2] + 1e-4))
         return th1, th2, obs[4], obs[5]
-        
+
         
     def create_model(self, obs: np.ndarray) -> pyo.ConcreteModel:
         """Returns a pyomo model that solves the MPC problem."""
@@ -178,8 +178,8 @@ class ModelPredictiveController(GenericController):
 
         # Objective fuction simply sums over stage costs.
         m.cost = pyo.Objective(
-            rule=sum(self.gamma**t * m.step_cost[t] for t in m.t))
-            #rule=m.step_cost[self.K])
+            #rule=sum(self.gamma**t * m.step_cost[t] for t in m.t))
+            rule=m.step_cost[self.K])
         
         return m
 
@@ -224,6 +224,7 @@ class ModelPredictiveController(GenericController):
         finally:
             return int(np.round(u)) + 1
 
+
     def _check_status(self, solution):
         """Logs errors/warnings if solver status is fishy."""
         if solution.solver.status != SolverStatus.ok:
@@ -254,9 +255,8 @@ class ModelPredictiveController(GenericController):
 if __name__ == "__main__":
     
     from gym_control import run_env
-    from gym_control.acrobot.mpc import ModelPredictiveController
     
     env = gym.make("Acrobot-v1")
     mpc = ModelPredictiveController(K=40, control_int=.125)
     
-    run_env(env, mpc, render=True, max_steps=500, control_int=1)
+    _ = run_env(env, mpc, render=True, max_steps=500, control_int=1)

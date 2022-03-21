@@ -4,11 +4,13 @@ import numpy as np
 import pandas as pd
 # from pyutilib import subprocess
 
+import gym
+
 from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 import pyomo.environ as pyo
 from pyomo.environ import value
 
-from controller import PendulumController
+from gym_control import GenericController
 
 
 logger = logging.getLogger(__file__)
@@ -18,7 +20,7 @@ logger = logging.getLogger(__file__)
 # subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
 
 
-class ModelPredictiveController(PendulumController):
+class ModelPredictiveController(GenericController):
     
     def __init__(
         self,
@@ -36,6 +38,9 @@ class ModelPredictiveController(PendulumController):
         self.solver = solver
         self.num_solves = 0
         
+        self._env = gym.make("Pendulum-v1")
+        
+        
         
     def create_model(self, initial_state: np.ndarray) -> pyo.ConcreteModel:
         """Returns a pyomo model that solves the MPC problem."""
@@ -49,7 +54,7 @@ class ModelPredictiveController(PendulumController):
         # Variables.
         m.th = pyo.Var(m.t)
         m.thdot = pyo.Var(m.t)
-        m.u = pyo.Var(m.t, bounds=(-self.max_torque, self.max_torque))
+        m.u = pyo.Var(m.t, bounds=(-self._env.max_torque, self._env.max_torque))
         m.step_cost = pyo.Var(m.t)
 
         # Initial conditions.
@@ -62,7 +67,7 @@ class ModelPredictiveController(PendulumController):
 
         # Update angular velocity using Newton (physics) and Euler (integration).
         # newthdot = thdot + (3 * g / (2 * l) * np.sin(th) + 3.0 / (m * l ** 2) * u) * dt
-        g, mass, l, dt = self.g, self.m, self.l, self.dt
+        g, mass, l, dt = self._env.g, self._env.m, self._env.l, self._env.dt
         m.thdot_cons = pyo.Constraint(
             m.t_not_init,
             rule=lambda m, t: \
@@ -163,9 +168,20 @@ class ModelPredictiveController(PendulumController):
         
         # For convenience, compute the x-y coordinate of pendulum head.
         data.update({
-            "x": [self.l * np.cos(th) for th in data["th"]],
-            "y": [self.l * np.sin(th) for th in data["th"]]
+            "x": [self._env.l * np.cos(th) for th in data["th"]],
+            "y": [self._env.l * np.sin(th) for th in data["th"]]
         })
                             
         return pd.DataFrame(data)
+
+
+
+if __name__ == "__main__":
+    
+    from gym_control import run_env
+    
+    env = gym.make("Pendulum-v1")
+    mpc = ModelPredictiveController(K=20)
+    
+    _ = run_env(env, mpc, render=True, max_steps=200, control_int=1)
 
