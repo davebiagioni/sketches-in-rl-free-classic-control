@@ -11,14 +11,13 @@ print(
     The control action is the torque on the fulcrum point, with values in 
     [-2.0, 2.0].  Use the LEFT, RIGHT, and DOWN arrow keys to adjust the
     torque.  These have the effect:
-        LEFT:  decrease by 0.5 (clockwise)
-        RIGHT: increase by 0.5 (counter-clockwise)
-        DOWN:  set to 0
-    So, to get the max negative torque possible, you'll tap the left key 4
-    times in a row.  Your final "reward" will print out at the end of the 
-    episode.  
+        LEFT:  decrease clockwise torque
+        RIGHT: increase counterclockwise torque
+        DOWN:  set torque to 0
+    Your final "reward" will print out at the end of the 
+    episode -- the best possible is 0.
     
-    Happy torquing!
+    Happy torquing!  (WARNING: It's hard :)
     """)
 
 input("Press ENTER when ready")
