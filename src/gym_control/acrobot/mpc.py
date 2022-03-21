@@ -173,13 +173,12 @@ class ModelPredictiveController(GenericController):
             rule=lambda m, t: \
                 m.step_cost[t] == \
                     pyo.cos(m.th1[t]) + pyo.cos(m.th2[t] + m.th1[t])
-                    #m.dth1[t]**2
         )
 
         # Objective fuction simply sums over stage costs.
         m.cost = pyo.Objective(
-            #rule=sum(self.gamma**t * m.step_cost[t] for t in m.t))
-            rule=m.step_cost[self.K])
+            #rule=sum(self.gamma**(self.K - t) * m.step_cost[t] for t in m.t))
+            rule=m.step_cost[self.K-1])
         
         return m
 
@@ -197,18 +196,17 @@ class ModelPredictiveController(GenericController):
         model = self.create_model(obs=obs)
         
         # # Solve the MPC problem.
-        opt = SolverFactory("ipopt") #self.solver)
+        opt = SolverFactory(self.solver) #self.solver)
         
         # Various IPOPT options to tinker with.
-        # for key in kwargs:
-        #     opt.option[key] = kwargs.get(value)
-        opt.options["max_iter"] = 500
-        # # opt.options["max_cpu_time"] = 0.05  # force it to solve in real-time :)
-        # opt.options["tol"] = 1e-6
-        # opt.options["halt_on_ampl_error"] = "yes"
-        # if "warm_start" in kwargs and self.num_solves > 1:
-        #     opt.options["warm_start_init_point"] = "yes"
-        #     opt.options["warm_start_same_structure"] = "yes"
+        if self.solver == "ipopt":
+            opt.options["max_iter"] = 500
+            # opt.options["max_cpu_time"] = 0.05  # force it to solve in real-time :)
+            # opt.options["tol"] = 1e-6
+            # opt.options["halt_on_ampl_error"] = "yes"
+            # if "warm_start" in kwargs and self.num_solves > 1:
+            #     opt.options["warm_start_init_point"] = "yes"
+            #     opt.options["warm_start_same_structure"] = "yes"
 
         # Try to parse the solution.  This isn't super helpful traceback but at 
         # least should tell you high-level why the solved failed.  The solver 
@@ -222,7 +220,7 @@ class ModelPredictiveController(GenericController):
             logger.error("solve failed: {}".format(e))
             u = 0
         finally:
-            return int(np.round(u)) + 1
+            return int(np.round(u)) + 1     # Map back to env's discrete action space
 
 
     def _check_status(self, solution):
@@ -259,4 +257,7 @@ if __name__ == "__main__":
     env = gym.make("Acrobot-v1")
     mpc = ModelPredictiveController(K=40, control_int=.125)
     
-    _ = run_env(env, mpc, render=True, max_steps=500, control_int=1)
+    # Using ipopt results in relaxing the integer variables.  Use "mindtpy"
+    # solver for mix integer.
+    _ = run_env(env, mpc, render=True, max_steps=500, control_int=1,
+                solver="mindtpy")

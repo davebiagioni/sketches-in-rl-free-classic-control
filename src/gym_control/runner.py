@@ -13,17 +13,39 @@ logger = logging.getLogger(__file__)
 
 
 def run_env(
-    env: gym.Env,                   # target gym environment
-    controller: GenericController,  # instance of controller with solve method
-    max_steps: int = 200,           # max number of episode steps
-    seed: int = None,           # random seed for env.reset()
-    control_int: int = 1,       # number of steps between solves
-    use_tqdm: bool = True,      # use tqdm for more info?
-    render: bool = False,       # render the env?
+    env: gym.Env,
+    controller: GenericController,
+    max_steps: int = 200,
+    seed: int = None,
+    control_int: int = 1,
+    render: bool = False,
     **controller_kwargs,
 ) -> Tuple[dict, float]:
-    """Main control loop to run MPC against the gym environment. Returns the
-    episode reward."""
+    """Function to run an environment with a controller.
+
+    Parameters
+    ----------
+    env
+        Target gym environment.
+    controller
+        Controller object that will compute actions.
+    max_steps, optional
+        Max number of episode steps before termination, by default 200
+    seed, optional
+        Random seed for env.reset(), by default None
+    control_int, optional
+        Compute actions every this many env steps, by default 1
+    render, optional
+        Render the env, by default False
+
+    Returns
+    -------
+    traj
+        Dict of environment trajectory.
+    
+    reward
+        Episode reward.
+    """
 
     obs = env.reset(seed=seed)
     controller.reset()
@@ -32,8 +54,7 @@ def run_env(
     done = False
     reward = 0.
     traj = defaultdict(list)
-    rng = range(max_steps)
-    pb = tqdm(rng) if use_tqdm else rng
+    pb = tqdm(range(max_steps))
     try:
         # Main control loop.
         for t in pb:
@@ -43,7 +64,6 @@ def run_env(
             if t % control_int == 0:
                 u = controller.solve(obs=obs, **controller_kwargs)
             
-            print(u)
             # Aply the action and collect trajectory/reward.
             obs, rew, done, _ = env.step(u)
             reward += rew
@@ -52,10 +72,7 @@ def run_env(
             traj["rew"].append(rew)
     
             # Give some additional info on run time and current state. 
-            # It's not obvious from the rendering but the stable position
-            # is at (x=1, y=0).
-            if use_tqdm:
-                pb.set_description(f"ep_rew={reward:1.1f}")
+            pb.set_description(f"ep_rew={reward:1.1f}")
         
             if render:
                 env.render()
@@ -66,7 +83,8 @@ def run_env(
     except KeyboardInterrupt:
         print("stopped by user")
     
-    env.close()
+    finally:
+        env.close()
     
     return traj, reward
 
