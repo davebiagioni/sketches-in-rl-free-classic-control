@@ -178,7 +178,7 @@ class ModelPredictiveController(GenericController):
         # Objective fuction simply sums over stage costs.
         m.cost = pyo.Objective(
             #rule=sum(self.gamma**(self.K - t) * m.step_cost[t] for t in m.t))
-            rule=m.step_cost[self.K-1])
+            rule=m.step_cost[self.K])
         
         return m
 
@@ -255,7 +255,7 @@ if __name__ == "__main__":
     from gym_control import run_env
     
     env = gym.make("Acrobot-v1")
-    mpc = ModelPredictiveController(K=40, control_int=.125)
+    mpc = ModelPredictiveController(K=8*5, control_int=1./8)
     
     # Using ipopt results in relaxing the integer variables.  Use "mindtpy"
     # solver for mix integer.

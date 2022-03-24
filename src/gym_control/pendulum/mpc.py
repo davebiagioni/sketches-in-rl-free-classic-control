@@ -171,7 +171,7 @@ class ModelPredictiveController(GenericController):
             "x": [self._env.l * np.cos(th) for th in data["th"]],
             "y": [self._env.l * np.sin(th) for th in data["th"]]
         })
-                            
+
         return pd.DataFrame(data)
 
 
@@ -182,6 +182,5 @@ if __name__ == "__main__":
     
     env = gym.make("Pendulum-v1")
     mpc = ModelPredictiveController(K=20)
-    
-    _ = run_env(env, mpc, render=True, max_steps=200, control_int=1)
 
+    _ = run_env(env, mpc, render=True, max_steps=200, control_int=1)

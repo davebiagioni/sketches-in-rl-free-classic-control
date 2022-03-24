@@ -82,9 +82,9 @@ def run_env(
             
     except KeyboardInterrupt:
         print("stopped by user")
-    
-    finally:
         env.close()
+    
+    env.close()
     
     return traj, reward
 
