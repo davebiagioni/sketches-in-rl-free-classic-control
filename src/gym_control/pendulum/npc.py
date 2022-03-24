@@ -12,40 +12,7 @@ import torch.nn.functional as F
 
 from gym_control import GenericController
 
-
 logger = logging.getLogger(__file__)
-
-
-# class NeuralPredictiveModel(nn.Module):
-    
-#     def __init__(
-#         self,
-#         seq_len: int = None,
-#         hidden_dim: int = 64,
-#         max_torque: float = 2.
-#     ):  
-#         super().__init__()
-
-#         self.seq_len = seq_len
-#         self.hidden_dim = hidden_dim
-#         self.max_torque = max_torque
-        
-#         self.output = nn.Sequential( 
-#             nn.Linear(3, hidden_dim),
-#             nn.ReLU(),
-#             nn.Linear(hidden_dim, 1)
-#         )
-        
-#         for layer in self.output:
-#             if isinstance(layer, nn.Linear):
-#                 layer.weight.data.fill_(0.)
-
-
-#     def forward(self, x: torch.Tensor, y: torch.Tensor, thdot: torch.Tensor):
-#         u = torch.cat((x, y, thdot), axis=-1)
-#         u = self.output(u)
-#         u = self.max_torque * (2 * torch.sigmoid(u) - 1)
-#         return u
     
     
 class NeuralPredictiveController(GenericController, nn.Module):
