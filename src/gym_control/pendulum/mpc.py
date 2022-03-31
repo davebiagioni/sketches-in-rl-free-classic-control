@@ -24,22 +24,16 @@ class ModelPredictiveController(GenericController):
     
     def __init__(
         self,
-        *args,
-        K: int = 10,               # number of MPC lookahead steps
-        gamma: float = 1.0,       # decay factor in cost function
-        solver: str = "ipopt",     # NLP solver
-        **kwargs
+        horiz: int = 10,       # number of MPC lookahead steps
+        solver: str = "ipopt", # NLP solver
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__()
         
         # Solver-specific configuration.
-        self.K = K
-        self.gamma = gamma
+        self.horiz = horiz
         self.solver = solver
-        self.num_solves = 0
         
         self._env = gym.make("Pendulum-v1")
-        
         
         
     def create_model(self, initial_state: np.ndarray) -> pyo.ConcreteModel:
@@ -48,8 +42,8 @@ class ModelPredictiveController(GenericController):
         m = pyo.ConcreteModel()
         
         # Index sets.
-        m.t = pyo.RangeSet(0, self.K)
-        m.t_not_init = pyo.RangeSet(1, self.K)
+        m.t = pyo.RangeSet(0, self.horiz)
+        m.t_not_init = pyo.RangeSet(1, self.horiz)
         
         # Variables.
         m.th = pyo.Var(m.t)
@@ -96,7 +90,7 @@ class ModelPredictiveController(GenericController):
 
         # Objective fuction simply sums over stage costs.
         m.cost = pyo.Objective(
-            rule=sum(self.gamma**t * m.step_cost[t]/self.K for t in m.t))
+            rule=sum(m.step_cost[t]/self.horiz for t in m.t))
         
         return m
     
@@ -121,15 +115,9 @@ class ModelPredictiveController(GenericController):
         # # Solve the MPC problem, tee turns on verbose output from IPOPT.
         opt = SolverFactory(self.solver, tee=tee)
         
-        # Various IPOPT options to tinker with.
+        # Set solver options
         for key in kwargs:
-            opt.option[key] = kwargs.get(value)
-        # opt.options["max_iter"] = 100
-        # opt.options["max_cpu_time"] = 0.05  # force it to solve in real-time :)
-        opt.options["tol"] = 1e-8
-        # if "warm_start" in kwargs and self.num_solves > 1:
-        #     opt.options["warm_start_init_point"] = "yes"
-        #     opt.options["warm_start_same_structure"] = "yes"
+            opt.options[key] = kwargs[key]
 
         # Try to parse the solution.  This isn't super helpful traceback but at 
         # least should tell you high-level why the solved failed.  The solver 
@@ -137,15 +125,11 @@ class ModelPredictiveController(GenericController):
         u = None
         try:
             _ = opt.solve(model, tee=tee)
-            self.num_solves += 1
-            df = self.parse(model)
-            u = df["u"].values[0]
+            df = self._parse(model)
+            return np.array([df["u"].values[0]])
         except Exception as e:
             logger.error("solve failed: {}".format(e))
-            u = None
-        finally:
-            logger.debug(f"u={u}")
-            return np.array([u])
+
 
     def _check_status(self, solution):
         """Logs errors/warnings if solver status is fishy."""
@@ -157,10 +141,20 @@ class ModelPredictiveController(GenericController):
                 "termination condition: ", solution.solver.termination_condition)
 
             
-    def parse(self, m: pyo.ConcreteModel) -> pd.DataFrame:
+    def _parse(self, m: pyo.ConcreteModel) -> pd.DataFrame:
         """Returns a dataframe containing MPC's model of the problem variables 
-        over the lookahead horizon."""
-        
+        over the lookahead horizon.
+
+        Parameters
+        ----------
+        m
+            pyomo model to be parsed
+
+        Returns
+        -------
+            dataframe with model variables (columns) over the MPC horizon (rows)
+        """        
+                
         def _getval(name):
             return [value(getattr(m, name)[t]) for t in m.t]
 
@@ -180,7 +174,19 @@ if __name__ == "__main__":
     
     from gym_control import run_env
     
-    env = gym.make("Pendulum-v1")
-    mpc = ModelPredictiveController(K=20)
+    controller = ModelPredictiveController(horiz=20)
 
-    _ = run_env(env, mpc, render=True, max_steps=200, control_int=1)
+    # IPOPT options that let you solve faster but possibly less accurately.
+    solve_kwargs = {}
+    # Leave this commented to use the default settings.
+    # solve_kwargs = {
+    #     "max_iter": 500,             # fewer iterations before stopping
+    #     "max_cpu_time": 0.05,   # time limited
+    #     # "tol": 1e-8
+    # }
+
+    for seed in range(10):    
+        env = gym.make("Pendulum-v1")  # so you can re-render
+        _ = run_env(
+            env, controller, render=True, seed=seed, **solve_kwargs)
+        

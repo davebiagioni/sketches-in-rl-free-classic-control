@@ -19,7 +19,7 @@ def run_env(
     seed: int = None,
     control_int: int = 1,
     render: bool = False,
-    **controller_kwargs,
+    **solve_kwargs,
 ) -> Tuple[dict, float]:
     """Function to run an environment with a controller.
 
@@ -37,6 +37,8 @@ def run_env(
         Compute actions every this many env steps, by default 1
     render, optional
         Render the env, by default False
+    solve_kwargs, optional
+        optional arguments needed for the controller when calling solve
 
     Returns
     -------
@@ -62,7 +64,7 @@ def run_env(
             # Solve the control problem and extract the first action.
             # We do this once every 
             if t % control_int == 0:
-                u = controller.solve(obs=obs, **controller_kwargs)
+                u = controller.solve(obs=obs, **solve_kwargs)
             
             # Aply the action and collect trajectory/reward.
             obs, rew, done, _ = env.step(u)
@@ -82,9 +84,6 @@ def run_env(
             
     except KeyboardInterrupt:
         print("stopped by user")
-        env.close()
-    
-    env.close()
     
     return traj, reward
 
