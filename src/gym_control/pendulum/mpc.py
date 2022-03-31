@@ -6,7 +6,7 @@ import pandas as pd
 
 import gym
 
-from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
+from pyomo.opt import SolverFactory
 import pyomo.environ as pyo
 from pyomo.environ import value
 
@@ -94,11 +94,6 @@ class ModelPredictiveController(GenericController):
         
         return m
     
-    async def async_solve(self, obs, **kwargs):
-        if obs is None:
-            return 0.
-        return self.solve(obs, **kwargs)
-    
     
     def solve(
         self,
@@ -129,16 +124,6 @@ class ModelPredictiveController(GenericController):
             return np.array([df["u"].values[0]])
         except Exception as e:
             logger.error("solve failed: {}".format(e))
-
-
-    def _check_status(self, solution):
-        """Logs errors/warnings if solver status is fishy."""
-        if solution.solver.status != SolverStatus.ok:
-            logger.error("solver status: ", solution.solver.status)
-        
-        if solution.solver.termination_condition != TerminationCondition.optimal:
-            logger.warning(
-                "termination condition: ", solution.solver.termination_condition)
 
             
     def _parse(self, m: pyo.ConcreteModel) -> pd.DataFrame:
