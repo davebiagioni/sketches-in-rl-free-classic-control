@@ -17,7 +17,7 @@ from gym_control import GenericController
 logger = logging.getLogger(__file__)
 
     
-class NeuralPredictiveController(GenericController, nn.Module):
+class NeuroPredictiveController(GenericController, nn.Module):
     
     def __init__(
         self,
@@ -25,7 +25,8 @@ class NeuralPredictiveController(GenericController, nn.Module):
         learn_dynamics: bool = False,
         **kwargs
     ):
-        """Neural predictive controller that takes an input state and returns an action.
+        """Neural predictive controller that takes an input state and returns 
+        an action.
 
         Parameters
         ----------
@@ -72,8 +73,8 @@ class NeuralPredictiveController(GenericController, nn.Module):
         y: torch.Tensor, 
         thdot: torch.Tensor
     ) -> Tuple[torch.Tensor, Tuple[any, any]]:
-        """Forward pass of neural network that returns an action and, optionally,
-        predicted x,y values needed to learn the dynamics model.
+        """Forward pass of neural network that returns an action and, 
+        optionally, predicted x,y values needed to learn the dynamics model.
 
         Parameters
         ----------
@@ -99,7 +100,7 @@ class NeuralPredictiveController(GenericController, nn.Module):
         u = self.max_torque * (2 * torch.sigmoid(u) - 1)
         
         if self.learn_dynamics:
-            # Advance the physics using the computed action and _model_ of dynamics.
+            # Advance the physics using computed action and _model_ of dynamics.
             # 1. Compute the angle with correct quadrant.
             th = torch.atan2(y, x)
             
@@ -178,10 +179,10 @@ def train(learn_dynamics: bool = False) -> Tuple[GenericController, List[float]]
 
     torch.manual_seed(42)
     
-    # When initializing the controller, you can give it the exact physical parameters
-    # and only focus on learning a policy.  _OR_, you can set a parameter to None and
-    # try to learn it in addition to the policy -- end-to-end.
-    model = NeuralPredictiveController(learn_dynamics=learn_dynamics)
+    # When initializing the controller, you can give it the exact physical 
+    # parameters and only focus on learning a policy.  _OR_, you can set a 
+    # parameter to None and try to learn it in addition to the policy.
+    model = NeuroPredictiveController(learn_dynamics=learn_dynamics)
     
     # Optimizer
     opt = torch.optim.Adam(model.parameters(), lr=1e-2)
@@ -262,19 +263,24 @@ def train(learn_dynamics: bool = False) -> Tuple[GenericController, List[float]]
     
 if __name__ == "__main__":
     
-    import pandas as pd
-    import matplotlib.pyplot as plt
+    from gym_control import run_env
+    from gym_control.args import parser
     
-    from gym_control.runner import run_env
+    args = parser.parse_args()
     
+    logger.info("Training")
     controller, losses = train(learn_dynamics=False)
     
-    fig, ax = plt.subplots()
-    _ = pd.DataFrame(losses).plot(ax=ax, title="log training loss")
-    ax.set_yscale("log")
-    plt.show()
+    ## Uncomment if you want to plot the training losses
+    # import pandas as pd
+    # import matplotlib.pyplot as plt
+    #fig, ax = plt.subplots()
+    #_ = pd.DataFrame(losses).plot(ax=ax, title="log training loss")
+    # ax.set_yscale("log")
+    #plt.show()
     
-    for seed in range(10):
+    logger.info("Evaluating")
+    for seed in range(args.num_seeds):
         env = gym.make("Pendulum-v1")
         run_env(env, controller, render=True, seed=seed)
 

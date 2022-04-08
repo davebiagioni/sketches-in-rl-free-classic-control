@@ -86,7 +86,8 @@ class SGDController(GenericController):
             u = torch.cat((u0, u1), axis=0)
         u.requires_grad_(True)
 
-        opt = torch.optim.Adam([u], lr=self.lr)
+        # Change to Adam if you want, it works a bit better...
+        opt = torch.optim.SGD([u], lr=self.lr)
         
         for _ in range(self.num_sgd_steps):
 
@@ -124,10 +125,13 @@ class SGDController(GenericController):
     
 if __name__ == "__main__":
     
-    from gym_control.runner import run_env
+    from gym_control import run_env
+    from gym_control.args import parser
+    
+    args = parser.parse_args()
     
     controller = SGDController(horiz=20, num_samples=16, lr=.1, num_sgd_steps=5)
     
-    for seed in range(10):
+    for seed in range(args.num_seeds):
         env = gym.make("Pendulum-v1")
         run_env(env, controller, render=True, seed=seed)

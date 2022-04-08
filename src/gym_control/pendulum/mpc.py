@@ -158,6 +158,9 @@ class ModelPredictiveController(GenericController):
 if __name__ == "__main__":
     
     from gym_control import run_env
+    from gym_control.args import parser
+    
+    args = parser.parse_args()
     
     controller = ModelPredictiveController(horiz=20)
 
@@ -165,12 +168,12 @@ if __name__ == "__main__":
     solve_kwargs = {}
     # Leave this commented to use the default settings.
     # solve_kwargs = {
-    #     "max_iter": 500,             # fewer iterations before stopping
+    #     "max_iter": 500,        # fewer iterations before stopping
     #     "max_cpu_time": 0.05,   # time limited
-    #     # "tol": 1e-8
+    #     "tol": 1e-8             # convergence tolerance
     # }
 
-    for seed in range(10):    
+    for seed in range(args.num_seeds):    
         env = gym.make("Pendulum-v1")  # so you can re-render
         _ = run_env(
             env, controller, render=True, seed=seed, **solve_kwargs)
