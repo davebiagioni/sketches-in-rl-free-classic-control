@@ -1,6 +1,7 @@
 import sys
 
 import gym
+from gym.wrappers.record_video import RecordVideo
 import pygame
 
 
@@ -28,7 +29,11 @@ display = pygame.display.set_mode((300, 300))
 
 # Initialize the gym environment
 env = gym.make("Pendulum-v1")
-env.reset()
+
+# Use recorder wrapper if you want!
+env = RecordVideo(env, "video")
+
+env.reset(seed=0)
 reward = 0.    # total reward
 action = 0.    # initial action
 done = False   # done flag to know when episode is over
