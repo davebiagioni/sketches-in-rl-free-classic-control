@@ -1,7 +1,6 @@
-import numpy as np  # otherwise torch segfaults on my mac!?!
+import numpy as np
 
 import gym
-from tqdm import tqdm
 
 import torch
 
@@ -125,6 +124,8 @@ class SGDController(GenericController):
     
 if __name__ == "__main__":
     
+    from gym.wrappers.record_video import RecordVideo
+    
     from gym_control import run_env
     from gym_control.args import parser
     
@@ -132,6 +133,15 @@ if __name__ == "__main__":
     
     controller = SGDController(horiz=20, num_samples=16, lr=.1, num_sgd_steps=5)
     
-    for seed in range(args.num_seeds):
-        env = gym.make("Pendulum-v1")
-        run_env(env, controller, render=True, seed=seed)
+    env = gym.make("Pendulum-v1")
+    env = RecordVideo(env, "pendulum-sgd")
+    
+    # Run with rendering and terminate early if reward is ~0 for 1 second
+    seeds = list(range(args.num_seeds))
+    perf_data = run_env(
+        env, controller, render=True, seeds=seeds, early_term_steps=20)
+    
+    print(perf_data)
+    
+    
+    
