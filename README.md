@@ -1,4 +1,4 @@
-# sketches-in-gym-control
+# Sketches in RL-Free Classic Control
 
 This code accompanies my [blog on RL-Free Classic Control](https://davebiagioni.github.io/sketches-in-rl-free-classic-control/). 
 
