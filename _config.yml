@@ -1,0 +1,14 @@
+title: Sketches in RL-Free Classic Control
+author: Dave Biagioni
+# email: your-email@domain.com
+description: > # this means to ignore newlines until "baseurl:"
+  This blog looks at using model-based methods to solve classic control problems 
+  in OpenAI gym. Some of these methods use deep learning, but no RL allowed!
+  
+# social links
+# twitter_username: your-twitter-handle # DO NOT include the @ character, or else the build will fail!
+github_username:  davebiagioni # DO NOT include the @ character, or else the build will fail!
+
+# show_excerpts: true # set to false to remove excerpts on the homepage
+
+theme: minima
