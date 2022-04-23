@@ -1,8 +1,8 @@
 # Sketches in RL-Free Classic Control
 
-This code accompanies my [blog on RL-Free Classic Control](https://davebiagioni.github.io/sketches-in-rl-free-classic-control/). 
+This code accompanies my [blog on RL-free classic control](https://davebiagioni.github.io/sketches-in-rl-free-classic-control/). 
 
-All are welcome to open issues or pull requests.
+Issues and pull requests welcome!
 
 Minimal conda setup:
 
